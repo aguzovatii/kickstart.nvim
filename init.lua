@@ -335,7 +335,7 @@ require('lazy').setup({
   { -- Fuzzy Finder (files, lsp, etc)
     'nvim-telescope/telescope.nvim',
     event = 'VimEnter',
-    branch = '0.1.x',
+    branch = 'master', -- this is needed because otherwise I encounter the following issue: https://github.com/nvim-telescope/telescope.nvim/issues/2898
     dependencies = {
       'nvim-lua/plenary.nvim',
       { -- If encountering errors, see telescope-fzf-native README for install instructions
@@ -624,6 +624,8 @@ require('lazy').setup({
             },
           },
         },
+
+        jdtls = {},
       }
 
       -- Ensure the servers and tools above are installed
@@ -652,8 +654,39 @@ require('lazy').setup({
             server.capabilities = vim.tbl_deep_extend('force', {}, capabilities, server.capabilities or {})
             require('lspconfig')[server_name].setup(server)
           end,
+          jdtls = function() end,
         },
       }
+    end,
+  },
+
+  {
+    'mfussenegger/nvim-jdtls',
+    dependencies = {
+      'williamboman/mason.nvim',
+      'neovim/nvim-lspconfig',
+      { 'nvim-telescope/telescope.nvim', dependencies = 'nvim-lua/plenary.nvim' },
+    },
+    config = function()
+      local function setup_jdtls()
+        local mason_path = require 'mason-core.path'
+        local function get_install_path(package)
+          return require('mason-registry').get_package(package):get_install_path()
+        end
+
+        local config = {
+          cmd = { mason_path.concat { get_install_path 'jdtls', 'jdtls' } },
+          root_dir = vim.fs.dirname(vim.fs.find({ 'gradlew', '.git', 'mvnw' }, { upward = true })[1]),
+        }
+        require('jdtls').start_or_attach(config)
+      end
+
+      local augroup = vim.api.nvim_create_augroup('jdtls', {})
+      vim.api.nvim_create_autocmd('FileType', {
+        pattern = 'java',
+        group = augroup,
+        callback = setup_jdtls,
+      })
     end,
   },
 
